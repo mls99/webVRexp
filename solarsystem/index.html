@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WebXR + ThreeJS Application</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <style type="text/css">
+        body {
+            max-width: 40em;
+            margin: auto;
+            font-family: sans-serif;
+        }
+        #container {
+            border: 0px solid red;
+            width: 500px;
+            height: 300px;
+        }
+        #fullscreen, #entervr {
+            display: none;
+        }
+
+        #menu li {
+            list-style: none;
+            border: 1px solid black;
+            background-color: #61dafb;
+            margin: 0.5em;
+            padding: 0.5em;
+        }
+        #menu li:hover {
+            background-color: #0e5895;
+        }
+
+
+        body {
+            display: grid;
+            grid-template-columns: [sidebar]1fr [main]1fr 1fr;
+            grid-template-rows: 4em [main]1fr [bottom]4em;
+        }
+
+        #title {
+            grid-column: main;
+            grid-row: 0;
+        }
+        #menu {
+            grid-column: sidebar;
+            grid-row: main;
+        }
+        #container {
+            grid-column: main;
+            grid-row: main;
+        }
+        #overlay {
+            border:1px solid black;
+            grid-column: main;
+            grid-row: main;
+            height: 2em;
+            background-color: rgba(255,255,255);
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+        }
+    </style>
+</head>
+<body>
+
+<h3 id="title">Solar System Tour</h3>
+
+
+<ul id="menu">
+    <li id="show-overview">Overview</li>
+    <li id="show-sun">Sun</li>
+    <li id="show-earth">Earth</li>
+    <li id="show-mars">Mars</li>
+    <li id="show-venus">Venus</li>
+    <li id="show-mercury">Mercury</li>
+    <li id="show-jupiter">Jupiter</li>
+    <li id="show-saturn">Saturn</li>
+    <li id="show-uranus">Uranus</li>
+    <li id="show-neptune">Neptune</li>
+    <li id="show-orbits">Toggle Orbit Lines</li>
+</ul>
+
+<div id="container"></div>
+
+
+<div id="overlay">
+    <div id="progress">
+        <label>loading</label>
+        <progress id="progress-bar" value="0.5"></progress>
+    </div>
+    <button id="fullscreen">play full screen</button>
+    <button id="entervr">play in vr</button>
+</div>
+
+
+<script type="module">
+    import WebXRBoilerPlate from "./node_modules/webxr-boilerplate/WebXRBoilerPlate.js"
+    import {Mesh, BoxBufferGeometry, MeshLambertMaterial,
+        Color, DirectionalLight, AmbientLight,
+        TextureLoader, AudioListener, Audio, AudioLoader,
+        SphereBufferGeometry,
+        Vector3, Group,
+        TorusBufferGeometry,
+        RingBufferGeometry,
+        DoubleSide,
+    } from "./node_modules/three/build/three.module.js"
+    import BackgroundAudioLoader from "./node_modules/webxr-boilerplate/BackgroundAudioLoader.js"
+    import VRStats from "./node_modules/webxr-boilerplate/vrstats.js";
+    import {Pointer, POINTER_ENTER, POINTER_CLICK, POINTER_EXIT} from "./node_modules/webxr-boilerplate/Pointer.js"
+    import InfoText from './InfoText.js'
+    import SimpleText from "./SimpleText.js"
+
+    //JQuery-like selector
+    const $ = (sel) => document.querySelector(sel)
+    const on = (elem, type, cb) => elem.addEventListener(type,cb)
+    const toRad = (deg) => deg * Math.PI/180
+
+    const app = new WebXRBoilerPlate({
+        container: $("#container")
+    })
+
+    let animateOrbits = true
+    let cameraTarget = null
+    const ORBIT_SPEED_SCALE = 0.2
+    const ROTATION_SPEED_SCALE = 0.2
+
+    const defs = {
+        sun: {
+            name:'Sun',
+            radius:8,
+            color:'yellow',
+            textureName:'./textures/sunmap.jpg',
+            audio:"./audio/sun.mp3",
+            orbit: {
+                radius:0,
+                speed:10,
+            }
+        },
+        mercury: {
+            name:'Mercury',
+            radius: 0.5,
+            color:'gray',
+            textureName:'./textures/mercurymap.jpg',
+            orbit: {
+                radius: 10,
+                speed:20,
+            }
+        },
+        venus: {
+            name:'Venus',
+            radius: 0.8,
+            color:'pink',
+            textureName:'./textures/venusmap.jpg',
+            orbit: {
+                radius: 12,
+                speed:4,
+            }
+        },
+        earth: {
+            name:'Earth',
+            radius: 1,
+            color:'blue',
+            textureName:'./textures/earthmap1k.jpg',
+            orbit: {
+                radius: 15,
+                speed:10,
+            }
+        },
+        mars: {
+            name:'Mars',
+            radius: 0.8,
+            color:'red',
+            textureName:'./textures/marsmap1k.jpg',
+            orbit: {
+                radius: 20,
+                speed:8,
+            }
+        },
+        jupiter: {
+            name:'Jupiter',
+            radius: 3,
+            color:'red',
+            textureName:'./textures/jupitermap.jpg',
+            orbit: {
+                radius: 30,
+                speed:6,
+            }
+        },
+        saturn: {
+            name:'Saturn',
+            radius: 2.5,
+            color:'yellow',
+            textureName:'./textures/saturnmap.jpg',
+            orbit: {
+                radius: 40,
+                speed:2,
+            }
+        },
+        uranus: {
+            name:'Uranus',
+            radius: 2.0,
+            color:'blue',
+            textureName:'./textures/uranusmap.jpg',
+            orbit: {
+                radius: 50,
+                speed:1,
+            }
+        },
+        neptune: {
+            name:'Neptune',
+            radius: 2.0,
+            color:'violet',
+            textureName:'./textures/neptunemap.jpg',
+            orbit: {
+                radius: 60,
+                speed:0.5,
+            }
+        },
+    }
+
+
+    function zoomSphere(app,key,sphere) {
+        cameraTarget = key
+        if(cameraTarget) {
+            app.infoText.visible = true
+            app.infoText.setPlanet(defs[key])
+        } else {
+            app.infoText.visible = false
+        }
+    }
+
+    function makeSpheres(app, texture_loader, defs) {
+        return Object.keys(defs).map(key => {
+            const def = defs[key]
+            let color = def.color
+            let texture = null
+            if(def.textureName) {
+                texture = texture_loader.load(def.textureName)
+                color = '#ffffff'
+            }
+            const sphere = new Mesh(
+                new SphereBufferGeometry(def.radius,32,32),
+                new MeshLambertMaterial({color:color,map:texture})
+            )
+            sphere.position.set(def.orbit.radius,0,0)
+            sphere.userData.def = def
+            sphere.userData.clickable = true
+            def.sphere = sphere
+            app.virtualCamera.add(sphere)
+            const button = $(`#show-${key}`)
+            if(button) on(button,'click',() => zoomSphere(app,key))
+
+            on(sphere,'click',()=>{
+                zoomSphere(app,key)
+            })
+            on(sphere,POINTER_ENTER,()=>{
+                sphere.material.color.set(0xff8888)
+            })
+            on(sphere,POINTER_EXIT,()=>{
+                sphere.material.color.set(0xffffff)
+            })
+
+            if(def.audio) {
+                new BackgroundAudioLoader().load(def.audio,(music)=>{
+                    console.log("loaded")
+                    def.loadedAudio = music
+                })
+            }
+
+            def.id = key
+
+
+            const orbitMesh = new Mesh(
+                new RingBufferGeometry(def.orbit.radius-0.25, def.orbit.radius+0.25,64),
+                new MeshLambertMaterial({color:'white', side: DoubleSide})
+            )
+            orbitMesh.rotation.x = toRad(-90)
+            orbitMesh.position.set(0,-0,0)
+            orbitMesh.userData.clickable = false
+            def.orbitMesh = orbitMesh
+            app.virtualCamera.add(orbitMesh)
+
+            return sphere
+        })
+    }
+
+    app.init().then((app) => {
+        app.scene.background = new Color( 0x000000 );
+
+        //create stats viewer
+        const stats = new VRStats(app)
+        // place stats inside camera so it's fixed position
+        app.camera.add(stats)
+        // add camera to scene so we can see it
+        app.scene.add(app.camera)
+
+        app.virtualCamera = new Group()
+        app.scene.add(app.virtualCamera)
+
+        const pointer = new Pointer(app,{
+            //Pointer searches everything in the scene by default
+            //override this to match just certain things
+            intersectionFilter: ((o) => o.userData.clickable),
+
+            //make the camera pan when moving the mouse. good for simulating head turning on desktop
+            cameraFollowMouse:false,
+
+            // set to true to move the controller node forward and tilt with the mouse.
+            // good for testing VR controls on desktop
+            mouseSimulatesController:false,
+
+            //turn this off if you provide your own pointer model
+            enableLaser: true,
+            laserLength: 20,
+        })
+
+
+        //load a cat texture
+        const texture_loader = new TextureLoader()
+        const spheres = makeSpheres(app,texture_loader,defs)
+
+        on($("#show-overview"),'click',() => zoomSphere(app,null))
+
+        //a standard directional light from above
+        const light = new DirectionalLight( 0xffffff, 1.0 );
+        light.position.set( 10, 10, 5 ).normalize();
+        app.scene.add( light );
+
+        //a standard ambient light
+        app.scene.add(new AmbientLight(0xffffff,0.3))
+
+        app.infoText = new InfoText(app,0.75,1.5,512)
+        app.scene.add(app.infoText)
+        app.infoText.visible = false
+        app.infoText.position.set(-1.0,1.5,-1.5)
+
+
+        app.nextButton = new SimpleText(app,0.5,0.2,512)
+        app.nextButton.setFontSize(40)
+        app.nextButton.setText('next >')
+        app.nextButton.position.set(0.5,0.7,-1.5)
+        app.scene.add(app.nextButton)
+        on(app.nextButton,'click',()=>{
+            if(!cameraTarget) return
+            const names = Object.keys(defs)
+            const n = names.findIndex(n => n===cameraTarget)
+            zoomSphere(app,names[(n+1)%names.length])
+        })
+        app.prevButton = new SimpleText(app,0.5,0.2,512)
+        app.prevButton.setFontSize(40)
+        app.prevButton.setText('< prev')
+        app.prevButton.position.set(-0.5,0.7,-1.5)
+        app.scene.add(app.prevButton)
+        on(app.prevButton,'click',()=>{
+            if(!cameraTarget) return
+            const names = Object.keys(defs)
+            const n = names.findIndex(n => n===cameraTarget)
+            zoomSphere(app,names[(n-1)%names.length])
+        })
+
+
+
+
+        // things to do on every render tick
+        // this is the render loop
+        app.onRender((time, app)=> {
+            pointer.tick(time)
+            stats.update(time)
+            if(animateOrbits) {
+                spheres.forEach(sphere => {
+                    const def = sphere.userData.def
+                    const theta = time/300*def.orbit.speed/100*ORBIT_SPEED_SCALE
+                    sphere.position.set(
+                        Math.cos(theta)*def.orbit.radius,
+                        0,
+                        Math.sin(theta)*def.orbit.radius
+                    )
+                    sphere.rotation.y = time/3000*ROTATION_SPEED_SCALE
+                })
+            }
+            if(cameraTarget) {
+                const pos = app.virtualCamera.position
+                const def = defs[cameraTarget]
+                pos.x = -def.sphere.position.x
+                pos.y = 1.5
+                pos.z = -def.sphere.position.z - def.radius*3
+                app.virtualCamera.scale.set(1.0,1.0,1.0)
+            } else {
+                app.virtualCamera.scale.set(0.5,0.5,0.5)
+                app.virtualCamera.position.set(0,0,-30)
+            }
+        })
+
+        //update progress indicator while loading
+        on(app,'progress',(prog)=> $("#progress").setAttribute('value',100*prog))
+
+        //when all assets are loaded
+        on(app,'loaded',()=>{
+            // hide the loading progress bar
+            $("#progress").style.display = 'none'
+            //show the fullscreen button
+            $("#fullscreen").style.display = 'block'
+            on($("#fullscreen"),'click',()=> {
+                app.playFullscreen()
+            })
+        })
+        //when VR support is detected
+        on(app,'detected',()=>{
+            // show the enter VR button
+            $("#entervr").style.display = 'block'
+            on($("#entervr"),'click',()=> {
+                app.enterVR()
+            })
+        })
+
+
+        app.showOrbits = false
+
+        on($("#show-orbits"),'click',()=>{
+            app.showOrbits = !app.showOrbits
+        })
+
+    })
+
+
+</script>
+</body>
+</html>

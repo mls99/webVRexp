@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<!---
+
+Dark Waves, bg audio
+
+https://freemusicarchive.org/music/Xenojam/~/Dark_Waves
+
+JM_FX_Hit 01a - Dark.wav
+
+https://freesound.org/people/Julien%20Matthey/sounds/201570/
+
+dark texture 3,  sound when invalid
+https://freesound.org/people/Dneproman/sounds/256829/
+
+dark movement 3, sound when valid
+
+https://freesound.org/people/fons/sounds/101369/
+
+
+https://freesound.org/people/neizvestnost/sounds/184464/
+
+https://freesound.org/people/LloydEvans09/sounds/321805/
+
+https://freesound.org/people/memz/sounds/323495/
+
+
+font
+
+https://fontlibrary.org/en/font/hobby-of-night
+
+--->
+
+
+<head>
+    <!-- Fathom - simple website analytics - https://github.com/usefathom/fathom -->
+    <script>
+        (function(f, a, t, h, o, m){
+            a[h]=a[h]||function(){
+                (a[h].q=a[h].q||[]).push(arguments)
+            };
+            o=f.createElement('script'),
+                m=f.getElementsByTagName('script')[0];
+            o.async=1; o.src=t; o.id='fathom-script';
+            m.parentNode.insertBefore(o,m)
+        })(document, window, '//stats.josh.earth/tracker.js', 'fathom');
+        fathom('set', 'siteId', 'GISNV');
+        fathom('trackPageview');
+    </script>
+    <!-- / Fathom -->
+    <title>Nonogram Game</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:site" content="@joshmarinacci">
+    <meta name="twitter:title" content="Lava Flow">
+    <meta name="twitter:description" content="WebVR Picross / Nonogram puzzle game">
+    <meta name="twitter:image" content="https://vr.josh.earth/x/nonogram/thumb.png">
+
+    <script src="./node_modules/three/build/three.min.js"></script>
+    <script src="./node_modules/three/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="./node_modules/three/examples/js/loaders/TTFLoader.js"></script>
+    <script src="./node_modules/three/examples/js/libs/opentype.min.js"></script>
+    <style>
+        @font-face {
+            font-family: 'H0bbyofnightRegular';
+            src: url('./hobby-of-night.ttf') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        body {
+            font-family: 'H0bbyofnightRegular';
+            font-weight: normal;
+            font-style: normal;
+            background-color: #101010;
+            color: #fff;
+            margin: 0px;
+            overflow: hidden;
+        }
+
+        h1 {
+            font-size: 20vh;
+            color: orange;
+            font-weight: normal;
+        }
+        @supports( background-clip: text) {
+            h1 {
+                background: linear-gradient(red, orange);
+                background-clip: text;
+                color: transparent;
+            }
+        }
+        h3 {
+            font-weight: normal;
+            font-size: 10vh;
+            color: #c02a2a;
+        }
+        #overlay {
+            position: fixed;
+            font-size: 5vh;
+            text-align: center;
+            background-color: rgba(0,0,0,0.5);
+            width: 100vw;
+            height: 100vh;
+        }
+        #overlay h1, #overlay h2, #overlay h3 {
+            padding: 0;
+            margin: 0.5em;
+        }
+        #loading-indicator {
+            display: block;
+        }
+        #click-to-play {
+            display: none;
+            border:4px solid transparent;
+            margin: 0 20vw;
+        }
+        #click-to-play:hover {
+            border:4px solid orange;
+        }
+
+        #enter-vr {
+            border: 5px solid #ae000d;
+            border-radius: 1.5em;
+            position: absolute;
+            bottom: 20px;
+            /*z-index: 999;*/
+            font-family: 'H0bbyofnightRegular';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 5vmin;
+            padding: 0.5em;
+            white-space: nowrap;
+            left: 50%;
+            background-color: #fff;
+            transform: translate(-50%,0);
+        }
+        #enter-vr:disabled {
+            display:none;
+        }
+        progress[value] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance:none;
+            display: inline-block;
+            border: 0.1em solid black;
+            background-color: black;
+            border-radius: 20px;
+            width: 5em;
+            height: 1em;
+        }
+        progress::-moz-progress-bar {
+            background-color: #c02a2a;
+            background: linear-gradient(red, orange);
+            border-radius: 20px;
+        }
+        progress::-webkit-progress-value {
+            background-color: #c02a2a;
+            background: linear-gradient(red, orange);
+            border-radius: 20px;
+        }
+
+        #credits {
+            font-family: sans-serif;
+            box-sizing: border-box;
+            padding: 15vh 15vw;
+            color: #ccc;
+            background-color: rgba(0,0,0,0.8);
+            position: fixed;
+            top:0;
+            bottom:0;
+            left:0;
+            right:0;
+            display: none;
+            z-index: 999;
+            width: 99vw;
+            height: 99vh;
+            font-size: 1.5vw;
+        }
+        #credits a {
+            color: orange;
+        }
+        #credits h3, #credits h4 {
+            text-align: center;
+            font-size: 2vw;
+        }
+
+        #credits-link, #credits-close {
+            border: 0px solid black;
+            font-size: 3vw;
+            font-family: sans-serif;
+            background-color: orange;
+            color: black;
+            border: 3px solid orange;
+        }
+    </style>
+</head>
+<body>
+
+<div id="credits">
+    <h3>Instructions</h3>
+    <h4>Figure out which squares are rock or lava. Numbers indicate a run of rocks in each row or column. Check your progress with the 'check' button.
+        Standard nonogram / picross rules.
+    </h4>
+    <h3>Credits</h3>
+    <h4>Concept, code and game by Josh Marinacci</h4>
+    <ul>
+        <li>Music: <a href="https://freemusicarchive.org/music/Xenojam/~/Dark_Waves
+">Dark Waves</a> by Xenojam,
+            <a href="https://freesound.org/people/neizvestnost/sounds/184464/">Short Composition 1</a> by neizvestnost,
+
+        </li>
+        <li>Sound Effects:
+            <a href="https://freesound.org/people/Julien%20Matthey/sounds/201570/">Drum</a> by Julien Matthey,
+            <a href="https://freesound.org/people/Dneproman/sounds/256829/">Dark Texture 3</a> by Dneproman,
+            <a href="https://freesound.org/people/fons/sounds/101369/">Dark Movement 3</a> by fons,
+            <a href="https://freesound.org/people/LloydEvans09/sounds/321805/">PVC pipe hit</a> by LloydEvans09,
+            <a href="https://freesound.org/people/memz/sounds/323495/">Dark Evil Piano</a> by memz,
+        </li>
+        <li>
+            Font:
+            <a href="https://fontlibrary.org/en/font/hobby-of-night">Hobby Of Night</a> by deFharo
+        </li>
+        <li>
+            3D Models:
+            <a href="https://opengameart.org/content/low-poly-rocks-pack">Low Poly Rocks Pack</a> by MrCraft Animation
+        </li>
+    </ul>
+
+    <h3>Learn more at</h3>
+    <h3><a href="https://vr.josh.earth/">vr.josh.earth</a></h3>
+    <h3><button id="credits-close">close</button></h3>
+</div>
+
+<div id="overlay">
+    <h1>Lava Flow</h1>
+    <h2><button id="credits-link">credits &amp; instructions</button></h2>
+    <h3 id="loading-indicator"><label>loading</label><progress max="100" value="0" id="progress"></progress></h3>
+    <h3 id="click-to-play">click to play</h3>
+</div>
+<audio src="./audio/dark_waves_128.mp3" id="bg-music" loop></audio>
+
+<script src="./WebVR.js"></script>
+<script src="./pointer.js" type="module"></script>
+<script src="./nonogram.js" type="module"></script>
+<script src="./tween.js" type="module"></script>
+<script src="./jstats.js" type="module"></script>
+<script src="./jtimer.js" type="module"></script>
+<script src="./cell.js" type="module"></script>
+<script src="./resources.js" type="module"></script>
+
+<script type="module">
+    function $(sel) {
+        return document.querySelector(sel)
+    }
+    function on(obj, type, cb) {
+        if(!obj.listeners) obj.listeners = {}
+        if(!obj.listeners[type]) obj.listeners[type] = []
+        obj.listeners[type].push(cb)
+    }
+
+    import Nonogram, {STATES} from "./nonogram.js"
+    import {TWEEN} from "./tween.js"
+    import {POINTER_CLICK, POINTER_ENTER, POINTER_EXIT, Pointer} from './pointer.js'
+    import JStats from "./jstats.js"
+    import JTimer from "./jtimer.js"
+    import GridCell, {CELL_GEOMETRIES, CELL_MATERIALS} from "./cell.js"
+    import {RESOURCES, playSound} from './resources.js'
+
+    const TIMER = new JTimer()
+
+    var camera, scene, renderer;
+    let pointer, font;
+    let rock_geometry;
+    let mountain_geometry;
+    let click_to_play;
+    let you_win;
+    let notification_text;
+    let alert_text1;
+    let alert_text2;
+    let currentBoard;
+    let pointLight;
+
+    let stats
+
+
+    const levels = [
+        /*
+        new Nonogram([
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ],"jesse,s weird nonogram")
+        */
+        /*
+        new Nonogram([
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+        ],''),
+
+        new Nonogram([ //jesses plus symbol
+            [0,1,0],
+            [1,1,1],
+            [0,1,0],
+        ],'plus'),
+
+        new Nonogram([
+            //jesses
+            [1,1,1,1,1,1,1],
+            [0,0,0,0,0,0,0],
+            [1,1,1,1,1,1,1],
+            [1,0,1,0,1,0,1],
+        ],'foo'),
+
+
+        new Nonogram([ //jesse's
+            [0,1,0,1],
+            [1,0,1,0],
+            [0,1,0,1],
+            [1,0,1,0],
+        ]),
+        new Nonogram([ // Jesse's
+            [1,0,0, 1,0,0],
+            [0,0,1, 0,0,1],
+            [1,0,0, 1,0,0],
+        ]),
+
+
+        new Nonogram([ // V shape
+            [1,0,1],
+            [0,1,0],
+        ]),
+        */
+        new Nonogram([ //
+            [0,1,0],
+            [1,1,1],
+            [0,1,0],
+        ],'plus'),
+
+        new Nonogram([ //T
+            [0,1,0,1],
+            [1,0,1,0],
+            [0,1,0,1],
+        ],'fish'),
+
+        new Nonogram([ //ball
+            [0,1,1,1,0],
+            [1,1,0,0,1],
+            [1,1,1,0,1],
+            [1,1,1,1,1],
+            [0,1,1,1,0],
+        ],'ball'),
+        new Nonogram([ //sailing ship
+            [0,0,1,1,0,0,0],
+            [0,0,0,1,1,0,0],
+            [0,0,0,1,1,1,0],
+            [0,0,0,1,1,1,1],
+            [1,0,0,1,0,0,0],
+            [1,1,1,1,1,1,1],
+            [0,1,1,1,1,1,0],
+        ],'ship'),
+        new Nonogram([ // 5x7
+            [0,0,1,0,0],
+            [0,0,0,1,0],
+            [0,0,1,1,0],
+            [0,0,1,1,0],
+            [1,0,1,1,0],
+            [0,1,1,1,1]
+        ],'candle'),
+        new Nonogram([ // 7x6
+            [0,0,1,1,0,0,1],
+            [0,1,1,1,1,1,1],
+            [1,0,1,1,1,1,0],
+            [1,1,1,1,1,1,0],
+            [0,1,1,1,1,1,1],
+            [0,0,1,1,0,0,1],
+        ],'big fish'),
+        new Nonogram([ // 5 x 7
+            [0,0,1,0,0],
+            [0,0,1,0,0],
+            [0,1,1,1,0],
+            [1,0,1,1,1],
+            [1,1,1,1,1],
+            [1,1,1,1,1],
+            [0,1,1,1,0],
+        ],'bomb'),
+        new Nonogram([ // 9 x 7
+            [0,0,1,1,1,0,0,0,0],
+            [0,0,1,1,0,1,0,0,0],
+            [0,1,1,0,1,1,1,0,0],
+            [0,1,1,0,1,1,1,0,0],
+            [0,1,1,0,1,1,1,1,0],
+            [1,1,1,1,0,1,1,1,0],
+            [1,1,1,0,0,1,1,1,1],
+        ],'volcano'),
+        new Nonogram([ // 9 x 9
+            [0,0,1,1,1,1,1,0,0],
+            [0,1,0,0,0,0,0,1,0],
+            [1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,1,1,1,1,1],
+            [1,1,1,1,0,1,1,1,1],
+            [0,1,0,0,0,0,0,1,0],
+            [0,1,0,1,1,1,0,1,0],
+            [0,1,0,0,0,0,0,1,0],
+            [0,0,1,1,1,1,1,0,0],
+        ],'headset'),
+
+
+    ]
+    let currentLevelIndex = 0
+    const texture_loader = new THREE.TextureLoader()
+    const lava_texture = texture_loader.load('./lava_texture.jpg')
+    const floor_lava_texture = texture_loader.load('./lava_texture.jpg')
+    const floor_lava_texture_bump = texture_loader.load('./lava_texture_bump.jpg')
+    let floor_material
+
+    // const CELL_MATERIALS = []
+    CELL_MATERIALS[STATES.UNKNOWN]  = new THREE.MeshBasicMaterial({color:0x000000, side:THREE.DoubleSide})
+    CELL_MATERIALS[STATES.SELECTED] = new THREE.MeshLambertMaterial({color:0x888888, side:THREE.DoubleSide})
+    CELL_MATERIALS[STATES.EMPTY]    = new THREE.MeshBasicMaterial({color:0xff0000, side:THREE.DoubleSide, map:lava_texture})
+
+    // const CELL_GEOMETRIES = []
+    CELL_GEOMETRIES[STATES.UNKNOWN] = new THREE.BoxGeometry(0.6, 0.6, 0.2)
+    // CELL_GEOMETRIES[STATES.SELECTED] = rock_geometry
+    CELL_GEOMETRIES[STATES.EMPTY] = new THREE.BoxGeometry(0.6, 0.6, 0.2)
+
+    const BUTTON_TYPE = 'button'
+
+    $("#credits-close").addEventListener('click',(e)=>{
+        $("#credits").style.display = 'none'
+    })
+    $("#credits-link").addEventListener('click',(e)=>{
+        $("#credits").style.display = 'block'
+    })
+
+    init();
+    animate();
+
+    function init() {
+        const container = document.createElement( 'div' );
+        document.body.appendChild( container );
+
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color( 0x440000 );
+
+        camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 50 );
+
+        function makeBackground() {
+            floor_material = new THREE.MeshPhongMaterial({color:0xff3300, map:floor_lava_texture, normalMap: floor_lava_texture_bump, normalScale: new THREE.Vector2(0.5,0.5), emissive: new THREE.Color(0xff0000), emissiveIntensity:0.5, emissiveMap: floor_lava_texture_bump})
+            floor_material.map.wrapS = THREE.RepeatWrapping
+            floor_material.map.wrapT = THREE.RepeatWrapping
+            // floor_material.
+            const floor = new THREE.Mesh(
+                new THREE.PlaneGeometry(25,25),
+                floor_material,
+            )
+            floor.position.z = -12
+            floor.position.y = -2
+            floor.rotation.x = -Math.PI/2
+            return floor
+        }
+        scene.add(makeBackground())
+
+        var light = new THREE.DirectionalLight( 0xffffff, 0.5 );
+        light.position.set( 0, -1, 1 ).normalize();
+        scene.add( light );
+
+        pointLight = new THREE.PointLight(0xffffff, 0.5)
+        pointLight.position.set(0,-5,0)
+        scene.add(pointLight)
+
+        renderer = new THREE.WebGLRenderer( { antialias: true } );
+        renderer.setPixelRatio( window.devicePixelRatio );
+        renderer.setSize( window.innerWidth, window.innerHeight );
+        renderer.vr.enabled = true;
+        container.appendChild( renderer.domElement );
+        stats = new JStats(renderer)
+        // camera.add(stats)
+        scene.add(camera)
+
+        document.body.appendChild( WEBVR.createButton( renderer ) );
+
+        pointer = new Pointer(scene,renderer,camera, {
+            intersectionFilter: ((o) => o.userData.type === 'tile' || o.userData.clickable)
+        })
+
+        window.addEventListener( 'resize', onWindowResize, false );
+
+        THREE.DefaultLoadingManager.onStart = (url, loaded, total) => {
+            console.log(`loading ${url}.  loaded ${loaded} of ${total}`)
+        }
+        THREE.DefaultLoadingManager.onLoad = () => {
+            console.log(`loading complete`)
+            console.log("really setting it up now")
+            $("#loading-indicator").style.display = 'none'
+            $("#click-to-play").style.display = 'block'
+            showClickToPlay()
+            setupText()
+            setupGame(levels[currentLevelIndex])
+        }
+        THREE.DefaultLoadingManager.onProgress = (url, loaded, total) => {
+            console.log(`prog ${url}.  loaded ${loaded} of ${total}`)
+            $("#progress").setAttribute('value',100*(loaded/total))
+        }
+        THREE.DefaultLoadingManager.onError = (url) => {
+            console.log(`error loading ${url}`)
+        }
+        const loader = new THREE.TTFLoader()
+        const fontLoader = new THREE.FontLoader()
+        loader.load('./hobby-of-night.ttf',fnt => font = fontLoader.parse(fnt))
+
+
+        const gltf_loader = new THREE.GLTFLoader()
+        gltf_loader.load('./rock1.glb', function(gltf) {
+            gltf.scene.traverse((ch)=>{
+                if(ch.isMesh) {
+                    rock_geometry = ch.geometry
+                    rock_geometry.scale(0.3,0.3,0.3)
+                    rock_geometry.rotateX(-Math.PI/2)
+                    CELL_GEOMETRIES[STATES.SELECTED] = rock_geometry
+                }
+            })
+        })
+        gltf_loader.load('./rock3.glb', function(gltf) {
+            gltf.scene.traverse((ch)=>{
+                if(ch.isMesh) {
+                    mountain_geometry = ch.geometry
+                    mountain_geometry.scale(10,10,10)
+                }
+            })
+
+            const mountain_material = new THREE.MeshLambertMaterial({color:0xff3300})
+            const deg2rad = (d) => d*Math.PI/180
+            const count = 10
+            for(let i=0; i<count; i++) {
+                const mtn = new THREE.Mesh(mountain_geometry, mountain_material)
+                mtn.position.z = Math.sin(i* Math.PI*2/count) * 30
+                mtn.position.x = Math.cos(i*Math.PI*2/count) * 30
+                mtn.rotation.y = deg2rad(i*100)
+                scene.add(mtn)
+            }
+        })
+
+        const audioListener = new THREE.AudioListener()
+        camera.add(audioListener)
+
+        Object.keys(RESOURCES.SOUNDS).forEach(name => {
+            RESOURCES.SOUNDS[name] = new THREE.Audio(audioListener)
+            scene.add(RESOURCES.SOUNDS[name])
+        })
+
+        const audioLoader = new THREE.AudioLoader()
+        audioLoader.load("./audio/thunk_128.mp3", (buf)=> RESOURCES.SOUNDS.thunk.setBuffer(buf))
+        audioLoader.load("./audio/dark-texture_128.mp3", (buf)=> RESOURCES.SOUNDS.invalid.setBuffer(buf))
+        audioLoader.load("./audio/dark-movement3_128.mp3", (buf)=> RESOURCES.SOUNDS.valid.setBuffer(buf))
+        audioLoader.load("./audio/music_128.mp3", (buf) => RESOURCES.SOUNDS.win.setBuffer(buf))
+        audioLoader.load("./audio/bonk_128.mp3", (buf)=> {
+            RESOURCES.SOUNDS.hover.setBuffer(buf)
+            RESOURCES.SOUNDS.hover.setVolume(0.3)
+        })
+        audioLoader.load("./audio/piano_128.mp3",(buf)=>{
+            RESOURCES.SOUNDS.complete.setBuffer(buf).setLoop(true)
+        })
+
+
+    }
+    function showClickToPlay() {
+        const overlay = $('#overlay')
+        $("#click-to-play").addEventListener('click',()=>{
+            overlay.style.visibility = 'hidden'
+            $('#bg-music').volume = 0.5
+            $('#bg-music').play()
+        })
+        if($("#enter-vr"))  $("#enter-vr").removeAttribute('disabled')
+    }
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize( window.innerWidth, window.innerHeight );
+    }
+
+    function animate() {
+        renderer.setAnimationLoop( render );
+    }
+
+    let old = 0
+    function render(time) {
+        pointLight.position.x = Math.sin(old*200)*3
+        pointLight.position.z = Math.cos(old*200)*3
+        pointer.tick(time)
+        TWEEN.tick(time)
+        old += 0.0001
+        floor_material.map.rotation = old
+        stats.update(time)
+        renderer.render( scene, camera );
+    }
+
+    function makeCell(nonogram, x, y) {
+        const cell = new GridCell(nonogram,x,y)
+        cell.position.x = x
+        cell.position.y = y
+        return cell
+    }
+
+    function makeNumber(str,x,y) {
+        const geo = new THREE.TextGeometry(str,{
+            font: font,
+            size: 0.5,
+            height: 0.1,
+        })
+        const mat = new THREE.MeshLambertMaterial({color:0xcccccc})
+        const mesh = new THREE.Mesh(geo,mat)
+        mesh.position.x = x
+        mesh.position.y = y
+        mesh.position.z = 0
+        return mesh
+    }
+
+    function makeButton(text,color, cb) {
+        const button = new THREE.Group()
+        const geo = new THREE.PlaneGeometry(1.2,0.6)
+        const material_normal = new THREE.MeshBasicMaterial({color:color})
+        const material_highlight = new THREE.MeshBasicMaterial({color:0xcccccc})
+        const mesh = new THREE.Mesh(geo,material_normal)
+        mesh.jtype = BUTTON_TYPE
+        mesh.userData.clickable = true
+        on(mesh,POINTER_CLICK,cb)
+        on(mesh,POINTER_ENTER,()=>{
+            mesh.material = material_highlight
+            playSound(RESOURCES.SOUNDS.hover)
+        })
+        on(mesh, POINTER_EXIT,() => {
+            mesh.material = material_normal
+        })
+        button.add(mesh)
+
+        const tgeo = new THREE.TextGeometry(text,{font:font, size:0.3, height:0.1})
+        tgeo.center()
+        const tnode = new THREE.Mesh(tgeo, new THREE.MeshLambertMaterial({color:0x444444}))
+        button.add(tnode)
+
+        return button
+    }
+
+    function setupGame(nonogram) {
+        console.log("setting up the game", nonogram.width , ' x ', nonogram.height)
+
+        const grid = new THREE.Object3D()
+        for(let i=0; i<nonogram.width; i++) {
+            for(let j=0; j<nonogram.height; j++) {
+                grid.add(makeCell(nonogram,i,j))
+            }
+        }
+
+        var bbox = new THREE.Box3().setFromObject(grid);
+        const center = new THREE.Vector3()
+        bbox.getCenter(center)
+        grid.position.x = -center.x
+
+        const gboard = new THREE.Object3D()
+        gboard.add(grid)
+
+
+
+
+        const nums = new THREE.Object3D()
+
+        for(let i=0; i<nonogram.width; i++) {
+            const counts = nonogram.calculateColumnCounts(i)
+            counts.reverse()
+            counts.forEach((count,j) => {
+                nums.add(makeNumber(''+count, +1*i-0.4, -1*j))
+            })
+        }
+        for(let j=0; j<nonogram.height; j++) {
+            const counts = nonogram.calculateRowCounts(j)
+            counts.reverse()
+            counts.forEach((count,i) => {
+                nums.add(makeNumber(''+count,-1 -1*i, +1*j + 0.8))
+            })
+        }
+
+        nums.position.x = -center.x
+        nums.position.y = 0
+        gboard.position.z = 0
+        gboard.position.y = 1
+        const board = new THREE.Object3D()
+
+        const scale = -Math.max(nonogram.width, nonogram.height)*0.4
+        board.position.z = Math.min(-3 + scale,-5)
+        board.add(gboard)
+        board.add(nums)
+
+
+
+        const button = makeButton("check",0x5566ff,(e)=>{
+            if(nonogram.checkInvalid() > 0) {
+                playSound(RESOURCES.SOUNDS.invalid)
+                displayNotification(`${nonogram.checkInvalid()} invalid`)
+                return
+            }
+            if(nonogram.checkFinished()) {
+                $("#bg-music").pause()
+                playSound(RESOURCES.SOUNDS.complete)
+                grid.children.forEach(cell => {
+                    if(nonogram.isSolution(cell.cellx,cell.celly))  cell.solutionMesh.visible = true
+                })
+                displayAlert('Level complete',nonogram.getName()).then(() => {
+                    if(isGameEnd()) {
+                        RESOURCES.SOUNDS.complete.stop()
+                        playSound(RESOURCES.SOUNDS.win)
+                        displayAlert("Wow, You Won!","Play again?")
+                            .then(()=>{
+                                RESOURCES.SOUNDS.win.stop()
+                                $("#bg-music").currentTime = 0
+                                $("#bg-music").play()
+                                restartGame()
+                            })
+                            .catch(e=>console.log(e))
+                    } else {
+                        $("#bg-music").play()
+                        loadNextLevel()
+                        RESOURCES.SOUNDS.complete.stop()
+                    }
+                })
+                return
+            } else {
+                playSound(RESOURCES.SOUNDS.valid)
+            }
+        })
+        button.position.y = -1
+        button.position.z = 1
+        board.add(button)
+
+
+
+
+
+        scene.add(board)
+        currentBoard = board
+    }
+
+    function setupText() {
+        TIMER.start("setup-text")
+        const overlay = new THREE.Group()
+        overlay.position.z = -5
+        click_to_play = makeNumber('Click to Play', 2, 2)
+        click_to_play.material.color.set(0xff0000)
+        click_to_play.position.x = -1
+        click_to_play.visible = false
+        overlay.add(click_to_play)
+
+        you_win = makeNumber('You Win', 2, 2)
+        you_win.material.color.set(0xff0000)
+        you_win.position.x = 0
+        you_win.position.z = 0.5
+        you_win.visible = false
+        overlay.add(you_win)
+
+        notification_text = makeNumber('notification', 2, 2)
+        notification_text.material.color.set(0xFFA500)
+        notification_text.position.x = 0
+        notification_text.position.z = 0.5
+        notification_text.visible = false
+        overlay.add(notification_text)
+
+
+        alert_text1 = new THREE.Mesh(
+            new THREE.TextGeometry('alert 1', {
+                font: font,
+                size: 0.8,
+                height: 0.1,
+            }),
+            new THREE.MeshLambertMaterial({color: 0xFFA500, flatShading: true})
+        )
+        alert_text1.geometry.computeBoundingBox()
+        alert_text1.geometry.center()
+        alert_text1.position.z = 0.5
+        alert_text1.position.y = 2.5
+        alert_text1.visible = false
+        overlay.add(alert_text1)
+
+        alert_text2 = new THREE.Mesh(
+            new THREE.TextGeometry('alert 2', {
+                font: font,
+                size: 0.5,
+                height: 0.1,
+            }),
+            new THREE.MeshLambertMaterial({color: 0xFFA500})
+        )
+        alert_text2.geometry.computeBoundingBox()
+        alert_text2.geometry.center()
+        alert_text2.position.z = 0.5
+        alert_text2.position.y = 1.5
+        alert_text2.visible = false
+        overlay.add(alert_text2)
+
+        scene.add(overlay)
+        TIMER.stop("setup-text")
+    }
+
+
+    function displayNotification(str) {
+        notification_text.geometry = new THREE.TextGeometry(str,{
+            font: font,
+            size: 0.5,
+            height: 0.1,
+        })
+        notification_text.material.transparent = true
+        notification_text.material.opacity = 0
+        notification_text.visible = true
+
+        TWEEN.make({
+            target: notification_text.material,
+            property: 'opacity',
+            from: 0,
+            to: 1.0,
+            duration: 500
+        }).onEnd(()=> {
+            setTimeout(() => {
+                TWEEN.make({
+                    target: notification_text.material,
+                    property: 'opacity',
+                    from: 1.0,
+                    to: 0,
+                    duration: 500
+                }).onEnd(()=>{
+                    notification_text.visible = false
+                })
+
+            }, 2000)
+        })
+    }
+
+    function displayAlert(l1,l2) {
+        return new Promise((res,rej)=>{
+            alert_text1.geometry = new THREE.TextGeometry(l1,{
+                font: font,
+                size: 0.8,
+                height: 0.1,
+            })
+            alert_text1.geometry.computeBoundingBox()
+            alert_text1.geometry.center()
+            alert_text1.material.transparent = true
+            alert_text1.material.opacity = 0
+            alert_text1.visible = true
+
+            alert_text2.geometry = new THREE.TextGeometry(l2,{ font: font, size: 0.5, height: 0.1 })
+            alert_text2.geometry.computeBoundingBox()
+            alert_text2.geometry.center()
+            alert_text2.material.transparent = true
+            alert_text2.material.opacity = 0
+            alert_text2.visible = true
+
+
+            TWEEN.make({target:alert_text1.material,property:"opacity",from:0,to:1,duration:500})
+            TWEEN.make({target:alert_text2.material,property:"opacity",from:0,to:1,duration:500})
+
+            pointer.waitSceneClick(()=>{
+                TWEEN.make({target:alert_text1.material,property:"opacity",from:1,to:0,duration:500})
+                TWEEN.make({target:alert_text2.material,property:"opacity",from:1,to:0,duration:500})
+                    .onEnd(()=>{
+                        alert_text1.visible = false
+                        alert_text2.visible = false
+                        res()
+                    })
+            })
+        })
+    }
+
+    function isGameEnd() {
+        return (currentLevelIndex >= levels.length-1)
+    }
+
+    function restartGame() {
+        currentLevelIndex = 0
+        scene.remove(currentBoard)
+        const level = levels[currentLevelIndex]
+        level.reset()
+        setupGame(level)
+    }
+
+    function loadNextLevel() {
+        currentLevelIndex++
+        console.log("loading the next level",currentLevelIndex)
+        scene.remove(currentBoard)
+        const level = levels[currentLevelIndex]
+        level.reset()
+        setupGame(level)
+    }
+
+
+</script>
+</body>
+</html>
